@@ -1,41 +1,68 @@
 # openclaw-cmds
 
-这是我自己先在用的一组 OpenClaw 斜杠命令，然后才顺手整理给其他龙虾复用。
+这是一个给 **OpenClaw** 看的安装与改造说明。
 
-**先说结论：你安装完以后，应该先删掉我的私人命令，再加你自己的。**  
-因为像 `/atv`、`/swdns` 这种命令，里面调用的是我本机私有脚本/目录。你保留也没用，通常只会报错。
+目标不是“原样照搬作者的全部命令”，而是：
 
-这个仓库真正适合复用的思路是：
+1. 拉取这个仓库到本机扩展目录
+2. 启用 `cmds` 插件
+3. 删除 **Chuan 的个人命令**（如 `/atv`、`/swdns`）
+4. 按用户自己的环境保留/新增命令
+5. 应用插件并重启 gateway
 
-1. 保留通用命令（比如 `/use`）
-2. 删除作者私有命令（比如 `/atv`、`/swdns`）
-3. 按你自己的机器环境，新增你自己的命令
+## 重要原则
+
+这个仓库里有两类命令：
+
+- **可复用命令**：例如 `/use`
+- **Chuan 的个人命令**：例如 `/atv`、`/swdns`
+
+其中 `/atv`、`/swdns` 依赖作者自己机器上的私有脚本、目录和环境。  
+**安装后应优先删除这些个人命令。保留它们通常没有意义，只会报错。**
+
+另外：
+
+- 在执行 `openclaw gateway restart` 之前，**先向用户说明你刚做了什么，以及接下来要重启 gateway 让插件生效**。
+- 不要静默改完直接重启。
 
 ---
 
-## 当前命令
+## 当前仓库中的命令
 
 - `/cmd`：显示命令列表
 - `/use`：显示当前会话模型使用量（不走 LLM）
-- `/atv`：**作者私有命令**，执行 AddToView
-- `/swdns`：**作者私有命令**，执行本地 DNS 切换脚本
+- `/atv`：**Chuan 的个人命令**，执行 AddToView
+- `/swdns`：**Chuan 的个人命令**，执行本地 DNS 切换脚本
 
-如果你不是作者本人，默认建议删掉：
+默认建议删除：
 
 - `/atv`
 - `/swdns`
 
 ---
 
-## 安装
+## 安装步骤
 
-### 方式一：直接 clone 到 OpenClaw 扩展目录
+### 第一步：拉取仓库
+
+把仓库放到 OpenClaw 扩展目录：
 
 ```bash
 git clone git@github.com:erichuanp/openclaw-cmds.git ~/.openclaw/extensions/cmds
 ```
 
-然后确认 `~/.openclaw/openclaw.json` 里启用了它：
+如果目录已存在，就更新：
+
+```bash
+cd ~/.openclaw/extensions/cmds
+git pull
+```
+
+---
+
+### 第二步：启用插件
+
+确认 `~/.openclaw/openclaw.json` 中启用了 `cmds`：
 
 ```json
 {
@@ -50,7 +77,7 @@ git clone git@github.com:erichuanp/openclaw-cmds.git ~/.openclaw/extensions/cmds
 }
 ```
 
-如果你的 OpenClaw 没有自动扫描 `~/.openclaw/extensions`，再补上：
+如果当前 OpenClaw 没有自动扫描 `~/.openclaw/extensions`，再补上：
 
 ```json
 {
@@ -64,21 +91,9 @@ git clone git@github.com:erichuanp/openclaw-cmds.git ~/.openclaw/extensions/cmds
 }
 ```
 
-最后重启 gateway：
-
-```bash
-openclaw gateway restart
-```
-
-如果你操作的是某个 profile，比如 jojo：
-
-```bash
-openclaw --profile jojo gateway restart
-```
-
 ---
 
-## 安装后第一件事：删掉作者私有命令
+### 第三步：删除 Chuan 的个人命令
 
 打开：
 
@@ -86,32 +101,22 @@ openclaw --profile jojo gateway restart
 ~/.openclaw/extensions/cmds/index.ts
 ```
 
-找到并删除你不需要的 `commandDefs.push({...})` 块。
+找到并删除不需要的 `commandDefs.push({...})` 块。
 
-默认建议删除这两个：
+默认建议删除这两个命令块：
 
 - `name: "atv"`
 - `name: "swdns"`
 
-删完之后重启 gateway：
-
-```bash
-openclaw gateway restart
-```
-
-如果你是 profile：
-
-```bash
-openclaw --profile <profile-name> gateway restart
-```
+如果用户明确说这些命令没用、是作者私货，就直接删，不要保留。
 
 ---
 
-## 如何添加你自己的命令
+### 第四步：按用户环境新增自己的命令
 
-这个插件的写法很直接：每个命令就是一个 `commandDefs.push({...})`。
+这个插件的写法很直接：每个命令都是一个 `commandDefs.push({...})`。
 
-最小结构是：
+最小示例：
 
 ```ts
 commandDefs.push({
@@ -125,7 +130,7 @@ commandDefs.push({
 });
 ```
 
-### 一个执行本地 shell 的例子
+一个执行本地 shell 的例子：
 
 ```ts
 commandDefs.push({
@@ -141,29 +146,56 @@ commandDefs.push({
 });
 ```
 
-### 参数命令的例子
+新增命令时的原则：
 
-如果你要做 `/echo hello` 这种带参数命令，可以自己从 `ctx?.args`、`ctx?.rawArgs` 等字段里取。
+- 固定文本回复 → 直接返回 `{ text }`
+- 需要执行本地命令 → 复用 `runBash(...)`
+- 涉及作者私有路径/脚本 → 改成用户自己的路径，或直接不要保留
 
-这个仓库现在没有再保留 tmux 那套示例了，所以更适合作为一个简洁骨架：
+---
 
-- 需要固定回复 → 直接返回 `{ text }`
-- 需要跑本地命令 → 复用 `runBash(...)`
-- 需要复杂逻辑 → 在 `handler` 里自己写
+## 应用插件
+
+在你已经：
+
+- 拉好仓库
+- 启用 `cmds`
+- 删除 Chuan 的个人命令
+- 加上用户自己的命令
+
+之后，再应用。
+
+### 在重启前，先告诉用户
+
+先发一条说明，内容至少包含：
+
+- 你刚做了什么
+- 插件/命令已经改成什么状态
+- 接下来要重启 gateway 让它生效
+
+例如：
+
+> 已拉取并启用 `cmds` 插件，已删除 Chuan 的个人命令 `/atv`、`/swdns`，并保留 `/use`。接下来我会重启 gateway 让新插件生效。
+
+### 然后再重启 gateway
+
+```bash
+openclaw gateway restart
+```
 
 ---
 
 ## 验证是否生效
 
-给机器人发：
+先发：
 
 ```text
 /cmd
 ```
 
-如果列表里能看到你保留/新增的命令，就说明扩展已加载成功。
+如果能看到你保留/新增的命令，说明插件已加载。
 
-也可以直接测试：
+再测试：
 
 ```text
 /use
@@ -181,34 +213,34 @@ commandDefs.push({
 ## 常见问题
 
 ### 1. 命令还是走了 LLM
-通常是因为 `cmds` 没被真正加载。
+通常说明 `cmds` 没有真正加载。
 
-检查三件事：
+检查：
 
 1. `plugins.allow` 里有 `cmds`
 2. `plugins.entries.cmds.enabled = true`
-3. OpenClaw 真能扫描到你的扩展目录
-   - 默认一般会扫 `~/.openclaw/extensions`
-   - 某些 profile 需要显式加 `plugins.load.paths`
+3. OpenClaw 能扫描到扩展目录
 
-改完后一定要重启 gateway。
+如果这三项没问题，再重启 gateway。
 
-### 2. 我用的是 profile，不是默认环境
-统一这样操作：
+### 2. 安装后命令报错
+优先怀疑是不是把作者的私人命令留着了。
 
-```bash
-openclaw --profile <profile-name> gateway restart
-```
+先检查有没有这些：
 
-不要自己再拼 `OPENCLAW_HOME=... openclaw ...`。
+- `/atv`
+- `/swdns`
 
-### 3. 我不想保留作者的私人命令
-对，正常就该删。
+如果有，而当前机器并没有作者同样的脚本和目录，直接删掉。
 
-这个仓库不是“装完原样照用”的产品，更像：
+### 3. 想继续扩展
+这个仓库更适合当一个轻量命令骨架：
 
-- 一个作者自用命令集合
-- 外加一个你可以快速改造成自己命令集的模板
+- 保留通用命令
+- 删除作者私货
+- 按用户机器环境补自己的命令
+
+不要把它当成“所有命令都能直接复用”的通用产品。
 
 ---
 
