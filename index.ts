@@ -181,10 +181,11 @@ function formatChineseDuration(ms: number): string {
   return parts.join("");
 }
 
-function formatShanghaiResetAt(targetMs: number, includeTime: boolean): string {
+function getShanghaiDateParts(targetMs: number): { year: number; month: number; day: number; hour: number; minute: number } {
   const date = new Date(targetMs);
   const dtf = new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Shanghai",
+    year: "numeric",
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
@@ -193,10 +194,33 @@ function formatShanghaiResetAt(targetMs: number, includeTime: boolean): string {
   });
   const parts = dtf.formatToParts(date);
   const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  if (includeTime) {
-    return `${map.hour}:${map.minute}`;
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+  };
+}
+
+function formatShanghaiResetAt(targetMs: number, isFiveHour: boolean): string {
+  const target = getShanghaiDateParts(targetMs);
+  if (!isFiveHour) {
+    if (target.minute === 0) {
+      return `${target.month}月${target.day}日${target.hour}点`;
+    }
+    return `${target.month}月${target.day}日${target.hour}点${target.minute}分`;
   }
-  return `${Number(map.month)}.${Number(map.day)}`;
+
+  const now = getShanghaiDateParts(Date.now());
+  const targetStamp = `${target.year}-${target.month}-${target.day}`;
+  const nowStamp = `${now.year}-${now.month}-${now.day}`;
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const tomorrowParts = getShanghaiDateParts(tomorrow.getTime());
+  const tomorrowStamp = `${tomorrowParts.year}-${tomorrowParts.month}-${tomorrowParts.day}`;
+
+  const prefix = targetStamp === nowStamp ? "今日" : targetStamp === tomorrowStamp ? "明日" : `${target.month}月${target.day}日`;
+  return `${prefix}${target.hour}点${String(target.minute).padStart(2, "0")}分`;
 }
 
 function formatUsageReply(statusText: string, _sessionKey: string | null): string {
