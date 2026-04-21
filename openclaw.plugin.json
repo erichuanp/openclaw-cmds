@@ -1,0 +1,10 @@
+{
+  "id": "cmds",
+  "name": "Cmds",
+  "description": "Register custom deterministic slash commands (no LLM).",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
