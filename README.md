@@ -1,17 +1,29 @@
 # openclaw-cmds
 
-给 OpenClaw 加一组**不走 LLM 的确定性斜杠命令**。
+这是我自己先在用的一组 OpenClaw 斜杠命令，然后才顺手整理给其他龙虾复用。
 
-当前内置：
+**先说结论：你安装完以后，应该先删掉我的私人命令，再加你自己的。**  
+因为像 `/atv`、`/swdns` 这种命令，里面调用的是我本机私有脚本/目录。你保留也没用，通常只会报错。
+
+这个仓库真正适合复用的思路是：
+
+1. 保留通用命令（比如 `/use`）
+2. 删除作者私有命令（比如 `/atv`、`/swdns`）
+3. 按你自己的机器环境，新增你自己的命令
+
+---
+
+## 当前命令
 
 - `/cmd`：显示命令列表
-- `/atv`：执行 AddToView
-- `/tm`：向 tmux 会话发送命令（只回“已执行”）
-- `/tmfull`：在 tmux 会话中执行并回传输出
-- `/tmk`：杀掉 tmux 会话
-- `/tml`：列出 tmux 会话
-- `/swdns`：执行本地 DNS 切换脚本
 - `/use`：显示当前会话模型使用量（不走 LLM）
+- `/atv`：**作者私有命令**，执行 AddToView
+- `/swdns`：**作者私有命令**，执行本地 DNS 切换脚本
+
+如果你不是作者本人，默认建议删掉：
+
+- `/atv`
+- `/swdns`
 
 ---
 
@@ -58,21 +70,86 @@ git clone git@github.com:erichuanp/openclaw-cmds.git ~/.openclaw/extensions/cmds
 openclaw gateway restart
 ```
 
----
-
-### 方式二：已有仓库，直接拉最新
-
-```bash
-cd ~/.openclaw/extensions/cmds
-git pull
-openclaw gateway restart
-```
-
 如果你操作的是某个 profile，比如 jojo：
 
 ```bash
 openclaw --profile jojo gateway restart
 ```
+
+---
+
+## 安装后第一件事：删掉作者私有命令
+
+打开：
+
+```bash
+~/.openclaw/extensions/cmds/index.ts
+```
+
+找到并删除你不需要的 `commandDefs.push({...})` 块。
+
+默认建议删除这两个：
+
+- `name: "atv"`
+- `name: "swdns"`
+
+删完之后重启 gateway：
+
+```bash
+openclaw gateway restart
+```
+
+如果你是 profile：
+
+```bash
+openclaw --profile <profile-name> gateway restart
+```
+
+---
+
+## 如何添加你自己的命令
+
+这个插件的写法很直接：每个命令就是一个 `commandDefs.push({...})`。
+
+最小结构是：
+
+```ts
+commandDefs.push({
+  name: "hello",
+  description: "返回一句固定文本",
+  requireAuth: true,
+  acceptsArgs: false,
+  handler: async () => {
+    return { text: "hello" };
+  },
+});
+```
+
+### 一个执行本地 shell 的例子
+
+```ts
+commandDefs.push({
+  name: "upt",
+  description: "查看机器 uptime",
+  requireAuth: true,
+  acceptsArgs: false,
+  handler: async () => {
+    const { code, stdout, stderr } = await runBash("uptime", 10000);
+    const all = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim();
+    return { text: code === 0 ? all : `执行失败\n${all}` };
+  },
+});
+```
+
+### 参数命令的例子
+
+如果你要做 `/echo hello` 这种带参数命令，可以自己从 `ctx?.args`、`ctx?.rawArgs` 等字段里取。
+
+这个仓库现在没有再保留 tmux 那套示例了，所以更适合作为一个简洁骨架：
+
+- 需要固定回复 → 直接返回 `{ text }`
+- 需要跑本地命令 → 复用 `runBash(...)`
+- 需要复杂逻辑 → 在 `handler` 里自己写
 
 ---
 
@@ -84,7 +161,7 @@ openclaw --profile jojo gateway restart
 /cmd
 ```
 
-如果命令列表里能看到 `/use`，说明扩展已加载成功。
+如果列表里能看到你保留/新增的命令，就说明扩展已加载成功。
 
 也可以直接测试：
 
@@ -103,15 +180,14 @@ openclaw --profile jojo gateway restart
 
 ## 常见问题
 
-### 1. `/use` 还是走了 LLM
+### 1. 命令还是走了 LLM
 通常是因为 `cmds` 没被真正加载。
 
-检查两件事：
+检查三件事：
 
-1. `openclaw.json` 里是否有：
-   - `plugins.allow` 包含 `cmds`
-   - `plugins.entries.cmds.enabled = true`
-2. OpenClaw 是否真的会扫描到扩展目录：
+1. `plugins.allow` 里有 `cmds`
+2. `plugins.entries.cmds.enabled = true`
+3. OpenClaw 真能扫描到你的扩展目录
    - 默认一般会扫 `~/.openclaw/extensions`
    - 某些 profile 需要显式加 `plugins.load.paths`
 
@@ -124,7 +200,15 @@ openclaw --profile jojo gateway restart
 openclaw --profile <profile-name> gateway restart
 ```
 
-不要再自己拼 `OPENCLAW_HOME=... openclaw ...`。
+不要自己再拼 `OPENCLAW_HOME=... openclaw ...`。
+
+### 3. 我不想保留作者的私人命令
+对，正常就该删。
+
+这个仓库不是“装完原样照用”的产品，更像：
+
+- 一个作者自用命令集合
+- 外加一个你可以快速改造成自己命令集的模板
 
 ---
 
