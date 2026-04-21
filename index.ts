@@ -206,10 +206,7 @@ function getShanghaiDateParts(targetMs: number): { year: number; month: number; 
 function formatShanghaiResetAt(targetMs: number, isFiveHour: boolean): string {
   const target = getShanghaiDateParts(targetMs);
   if (!isFiveHour) {
-    if (target.minute === 0) {
-      return `${target.month}月${target.day}日${target.hour}点`;
-    }
-    return `${target.month}月${target.day}日${target.hour}点${target.minute}分`;
+    return `${target.month}月${target.day}日${target.hour}时`;
   }
 
   const now = getShanghaiDateParts(Date.now());
@@ -220,7 +217,7 @@ function formatShanghaiResetAt(targetMs: number, isFiveHour: boolean): string {
   const tomorrowStamp = `${tomorrowParts.year}-${tomorrowParts.month}-${tomorrowParts.day}`;
 
   const prefix = targetStamp === nowStamp ? "今日" : targetStamp === tomorrowStamp ? "明日" : `${target.month}月${target.day}日`;
-  return `${prefix}${target.hour}点${String(target.minute).padStart(2, "0")}分`;
+  return `${prefix}${target.hour}时${String(target.minute).padStart(2, "0")}分`;
 }
 
 function formatUsageReply(statusText: string, _sessionKey: string | null): string {
