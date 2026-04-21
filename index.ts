@@ -262,31 +262,6 @@ export default function register(api: any) {
     },
   });
 
-  const swdnsHandler = async () => {
-    const cmd = [
-      "set -euo pipefail",
-      "cd ~/Scripts",
-      "nohup conda run -n router-switch python switch_router_dns_gateway.py >/dev/null 2>&1 < /dev/null &",
-    ].join("\n");
-
-    const launch = await runBash(cmd, 15_000);
-    if (launch.code !== 0 || launch.timedOut) {
-      const tail = `${launch.stdout}${launch.stderr}`.trim();
-      return { text: `启动失败。${tail ? `\n${tail}` : ""}` };
-    }
-
-    return { text: "尝试切换DNS与网关中..." };
-  };
-
-  commandDefs.push({
-    name: "swdns",
-    description: "执行本地 DNS 切换脚本（静默执行）",
-    requireAuth: true,
-    acceptsArgs: false,
-    handler: swdnsHandler,
-  });
-
-
   for (const c of commandDefs) {
     api.registerCommand({
       name: c.name,
