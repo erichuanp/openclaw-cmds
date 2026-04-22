@@ -32,6 +32,8 @@
 - `/cmd`：显示命令列表
 - `/use`：显示当前会话模型使用量（不走 LLM）
 - `/atv`：**Chuan 的个人命令**，执行 AddToView
+- `/m2d <Markdown文件路径>`：把 markdown 文件转成 docx
+- `/d2m <DOCX文件路径>`：把 docx 文件转成 markdown
 
 默认建议删除：
 
@@ -170,6 +172,38 @@ commandDefs.push({
 - 固定文本回复 → 直接返回 `{ text }`
 - 需要执行本地命令 → 复用 `runBash(...)`
 - 涉及作者私有路径/脚本 → 改成用户自己的路径，或直接不要保留
+
+### 文档转换命令 `/m2d` / `/d2m`
+
+这两个命令复用 workspace 里的 `pandoc-docx` skill 脚本：
+
+- `/m2d <path>` → 调 `skills/pandoc-docx/scripts/convert.sh --to docx <path>`
+- `/d2m <path>` → 调 `skills/pandoc-docx/scripts/convert.sh --to md <path>`
+
+示例：
+
+```text
+/m2d ~/Documents/demo.md
+/d2m ~/Documents/demo.docx
+```
+
+返回值会直接给出输出文件路径。
+
+### 先安装 Pandoc
+
+这两个命令依赖本机已安装 `pandoc`。未安装时，转换脚本会失败。
+
+macOS（Homebrew）：
+
+```bash
+brew install pandoc
+```
+
+安装后可先验证：
+
+```bash
+pandoc --version
+```
 
 ---
 

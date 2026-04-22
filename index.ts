@@ -46,6 +46,48 @@ function parseAtvResult(stdout: string, stderr: string, code: number, timedOut: 
     : `atv 执行失败（exit=${code}）。\n${tail || "无额外错误信息"}`;
 }
 
+function resolveHomePath(input: string): string {
+  if (input === "~") return process.env.HOME || input;
+  if (input.startsWith("~/")) return `${process.env.HOME || "~"}/${input.slice(2)}`;
+  return input;
+}
+
+function parseConvertOutputPath(stdout: string): string | null {
+  const lines = stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines[lines.length - 1] : null;
+}
+
+async function convertWithPandoc(to: "docx" | "md", rawInput: string | undefined): Promise<{ text: string }> {
+  const inputArg = rawInput?.trim();
+  if (!inputArg) {
+    return { text: to === "docx" ? "用法：/m2d <Markdown文件路径>" : "用法：/d2m <DOCX文件路径>" };
+  }
+
+  const inputPath = resolveHomePath(inputArg);
+  const scriptPath = "$HOME/.openclaw/workspace/skills/pandoc-docx/scripts/convert.sh";
+  const shellCmd = `${shSingleQuote(scriptPath)} --to ${to === "docx" ? "docx" : "md"} ${shSingleQuote(inputPath)}`;
+  const { code, stdout, stderr, timedOut } = await runBash(shellCmd, 2 * 60 * 1000);
+
+  if (timedOut) {
+    return { text: `${to === "docx" ? "m2d" : "d2m"} 执行失败：超时。` };
+  }
+
+  if (code !== 0) {
+    const tail = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim().split(/\r?\n/).filter(Boolean).slice(-6).join("\n");
+    return { text: `${to === "docx" ? "m2d" : "d2m"} 执行失败（exit=${code}）。${tail ? `\n${tail}` : ""}` };
+  }
+
+  const outputPath = parseConvertOutputPath(stdout);
+  if (!outputPath) {
+    return { text: `${to === "docx" ? "m2d" : "d2m"} 已执行，但未解析到输出文件路径。` };
+  }
+
+  return { text: `${to === "docx" ? "已转成 docx" : "已转成 markdown"}：${outputPath}` };
+}
+
 type CommandDef = {
   name: string;
   description: string;
@@ -260,6 +302,22 @@ export default function register(api: any) {
       const text = formatUsageReply(stdout, sessionKey);
       return { text };
     },
+  });
+
+  commandDefs.push({
+    name: "m2d",
+    description: "把 markdown 文件转成 docx",
+    requireAuth: true,
+    acceptsArgs: true,
+    handler: async (ctx) => convertWithPandoc("docx", ctx?.args),
+  });
+
+  commandDefs.push({
+    name: "d2m",
+    description: "把 docx 文件转成 markdown",
+    requireAuth: true,
+    acceptsArgs: true,
+    handler: async (ctx) => convertWithPandoc("md", ctx?.args),
   });
 
   for (const c of commandDefs) {
